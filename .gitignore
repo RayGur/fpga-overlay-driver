@@ -1,0 +1,23 @@
+# Build artifacts
+src/*.o
+overlay
+test/test_bit2bin
+test/test_hwh_parser
+
+# Bitstream files (large, machine-specific)
+*.bit
+*.bin
+
+# Docs binary formats
+docs/*.pdf
+docs/*.docx
+
+# Testing data bitstreams
+testing_data/**/*.bit
+testing_data/**/*.bin
+
+# Editor / OS
+.vscode/
+*.swp
+*~
+.DS_Store
