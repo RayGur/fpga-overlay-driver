@@ -20,10 +20,11 @@
  * word scanning is needed to locate the payload boundary.
  *
  * Sync word note:
- *   The real Xilinx sync word is 0xAA995566 (stored big-endian in .bit).
- *   After swap32 it becomes 0x665599AA in memory. ARM reads those 4 bytes
- *   as little-endian uint32 = 0xAA995566. All words go through the same
- *   swap; sync word needs no special treatment.
+ *   The real Xilinx sync word is 0xAA995566 (stored big-endian in .bit
+ *   as bytes AA 99 55 66). After swap32 it becomes 0x665599AA, stored
+ *   in .bin as bytes 66 55 99 AA. ARM reads those 4 bytes as little-endian
+ *   uint32 = 0xAA995566. All words go through the same swap; sync word
+ *   needs no special treatment.
  */
 
 #include "bit2bin.h"
@@ -48,7 +49,13 @@ static uint32_t swap32(uint32_t x)
 /*
  * file_size() — return size of a regular file via ftell/fseek.
  * POSIX guarantees this works on regular files opened in binary mode.
- * Returns -1 on error.
+ *
+ * Side-effect note: if the final fseek(SEEK_SET) fails, the file position
+ * is left at EOF and -1 is returned. The only caller (convert_bit_to_bin)
+ * immediately follows with fread(), which will read 0 bytes and trigger
+ * its own error check — so this side effect is harmless in practice.
+ *
+ * Returns file size on success, -1 on error.
  */
 static long file_size(FILE *fp)
 {
@@ -255,6 +262,12 @@ int convert_bit_to_bin(const char *input_path, const char *output_path)
     }
 
     /* ---- 4. Write byte-swapped words ------------------------------- */
+    /*
+     * memcpy() reads the 4 bytes into word without assuming host byte order.
+     * swap32() then performs an explicit byte-level reversal regardless of
+     * host endianness, making this code correct on both LE and BE hosts.
+     * (In practice this targets ARM little-endian, but no assumption is baked in.)
+     */
     const uint8_t *payload = buf + payload_off;
     size_t words = payload_len / 4;
 
