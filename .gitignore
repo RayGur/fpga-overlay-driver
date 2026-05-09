@@ -3,6 +3,7 @@ src/*.o
 overlay
 test/test_bit2bin
 test/test_hwh_parser
+.claude/cache/
 
 # Bitstream files (large, machine-specific)
 *.bit
