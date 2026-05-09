@@ -12,7 +12,7 @@
  *   1. bit_find_payload() returns a sane offset and word-aligned length
  *   2. convert_bit_to_bin() succeeds and output size matches TLV length
  *   3. Output is word-aligned
- *   4. Real sync word (AA 99 55 66 -> swapped: 66 55 99 AA) is present
+ *   4. Real sync word (AA 99 55 66 → swapped: 66 55 99 AA) is present
  *      in the output within the first 256 bytes
  *
  * Test independence:
@@ -38,10 +38,18 @@ static uint8_t *read_file(const char *path, size_t *out_len)
         perror(path);
         return NULL;
     }
-    fseek(fp, 0, SEEK_END);
+    if (fseek(fp, 0, SEEK_END) != 0)
+    {
+        fclose(fp);
+        return NULL;
+    }
     long sz = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
     if (sz <= 0)
+    {
+        fclose(fp);
+        return NULL;
+    }
+    if (fseek(fp, 0, SEEK_SET) != 0)
     {
         fclose(fp);
         return NULL;
