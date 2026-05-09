@@ -183,15 +183,23 @@ int main(int argc, char *argv[])
      * After swap32:                66 55 99 AA  (bytes in .bin)
      * ARM reads as LE uint32:      0xAA995566   ✓
      *
-     * The sync word is preceded by NOP words (FF FF FF FF → FF FF FF FF
-     * after swap) and bus-width detection words. All words are
-     * word-aligned, so scanning at i += 4 is correct and intentional —
-     * the sync word is guaranteed to start on a 4-byte boundary because
-     * the payload itself is word-aligned by TLV contract.
+     * The sync word is preceded by a fixed preamble (per UG470):
+     *   8x NOP word  (FF FF FF FF) = 32 bytes
+     *   bus-width detection words  =  8 bytes
+     *   2x dummy word (FF FF FF FF)=  8 bytes
+     *   sync word                  =  4 bytes
+     *                              = 52 bytes total
+     * SYNC_SEARCH_BYTES = 64 gives comfortable margin over 52 bytes
+     * while keeping the scan short and the intent obvious.
+     *
+     * All words are word-aligned, so scanning at i += 4 is correct and
+     * intentional — the sync word is guaranteed to start on a 4-byte
+     * boundary because the payload itself is word-aligned by TLV contract.
      */
+    static const size_t SYNC_SEARCH_BYTES = 64;
     static const uint8_t SWAPPED_SYNC[4] = {0x66, 0x55, 0x99, 0xAA};
     int found = 0;
-    size_t scan = out_len < 256 ? out_len : 256;
+    size_t scan = out_len < SYNC_SEARCH_BYTES ? out_len : SYNC_SEARCH_BYTES;
     for (size_t i = 0; i + 4 <= scan; i += 4)
     {
         if (out_buf[i] == SWAPPED_SYNC[0] && out_buf[i + 1] == SWAPPED_SYNC[1] &&
@@ -207,7 +215,8 @@ int main(int argc, char *argv[])
     if (!found)
     {
         fprintf(stderr, "FAIL [test4]: sync word 66 55 99 AA not found in "
-                        "first 256 bytes of output\n");
+                        "first %zu bytes of output\n",
+                SYNC_SEARCH_BYTES);
         pass = 0;
     }
 
