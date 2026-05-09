@@ -14,6 +14,11 @@
  *   3. Output is word-aligned
  *   4. Real sync word (AA 99 55 66 → swapped: 66 55 99 AA) is present
  *      in the output within the first 256 bytes
+ *
+ * Test independence:
+ *   Each test re-derives its expected values independently.
+ *   Test 2 re-parses the TLV header itself rather than reusing payload_len
+ *   from Test 1, so tests can be read and reasoned about in isolation.
  */
 
 #include <stdio.h>
@@ -102,6 +107,9 @@ int main(int argc, char *argv[])
                payload_off, payload_len);
     }
     free(in_buf);
+
+    /* Early exit: Test 2–4 depend on a readable input file, but not on
+     * Test 1's payload_len — each test re-derives what it needs. */
     if (!pass)
         return 1;
 
@@ -109,6 +117,24 @@ int main(int argc, char *argv[])
     if (convert_bit_to_bin(input_path, OUTPUT_PATH) != 0)
     {
         fprintf(stderr, "FAIL [test2]: convert_bit_to_bin failed\n");
+        return 1;
+    }
+
+    /* Re-parse TLV independently to get the expected payload length.
+     * This avoids a dependency on payload_len set in Test 1. */
+    size_t in_len2 = 0;
+    uint8_t *in_buf2 = read_file(input_path, &in_len2);
+    if (!in_buf2)
+    {
+        fprintf(stderr, "FAIL [test2]: could not re-read input for TLV check\n");
+        return 1;
+    }
+    size_t expected_off = 0, expected_len = 0;
+    int tlv_ok = bit_find_payload(in_buf2, in_len2, &expected_off, &expected_len);
+    free(in_buf2);
+    if (tlv_ok != 0)
+    {
+        fprintf(stderr, "FAIL [test2]: TLV re-parse failed\n");
         return 1;
     }
 
@@ -120,10 +146,10 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (out_len != payload_len)
+    if (out_len != expected_len)
     {
         fprintf(stderr, "FAIL [test2]: output size %zu != TLV payload length %zu\n",
-                out_len, payload_len);
+                out_len, expected_len);
         pass = 0;
     }
     else
@@ -145,11 +171,15 @@ int main(int argc, char *argv[])
 
     /* ---- Test 4: swapped sync word present in output -------------- */
     /*
-     * .bit stores sync word big-endian: AA 99 55 66
-     * swap32(0xAA995566) = 0x665599AA → bytes: 66 55 99 AA
-     * ARM reads those 4 bytes as LE uint32 = 0xAA995566 ✓
+     * In .bit (big-endian stored): AA 99 55 66
+     * After swap32:                66 55 99 AA  (bytes in .bin)
+     * ARM reads as LE uint32:      0xAA995566   ✓
      *
-     * Preceded by NOP and bus-width detection words; scan first 256 bytes.
+     * The sync word is preceded by NOP words (FF FF FF FF → FF FF FF FF
+     * after swap) and bus-width detection words. All words are
+     * word-aligned, so scanning at i += 4 is correct and intentional —
+     * the sync word is guaranteed to start on a 4-byte boundary because
+     * the payload itself is word-aligned by TLV contract.
      */
     static const uint8_t SWAPPED_SYNC[4] = {0x66, 0x55, 0x99, 0xAA};
     int found = 0;
