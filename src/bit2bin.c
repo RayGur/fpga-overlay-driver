@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <inttypes.h>
 
 /* ------------------------------------------------------------------ */
 /* Internal helpers                                                     */
@@ -65,6 +66,8 @@ static long file_size(FILE *fp)
     if (fseek(fp, 0, SEEK_END) != 0)
         return -1;
     long size = ftell(fp);
+    if (size < 0)
+        return -1; /* ftell at SEEK_END failed */
     if (fseek(fp, cur, SEEK_SET) != 0)
         return -1;
     return size;
@@ -82,17 +85,25 @@ static int read_be16(const uint8_t *buf, size_t len, size_t off)
 }
 
 /*
- * read_be32() — read a 4-byte big-endian value from buf[off].
- * Returns -1 if out of bounds.
+ * read_be32() — read a 4-byte big-endian uint32 from buf[off].
+ *
+ * Uses output parameter to avoid ambiguity between a legitimate value
+ * that happens to be 0xFFFFFFFF and the error sentinel -1.
+ * (A payload length with high bit set would have caused a false error
+ * if returned as a signed long.)
+ *
+ * Returns 0 on success, -1 if out of bounds.
  */
-static long read_be32(const uint8_t *buf, size_t len, size_t off)
+static int read_be32(const uint8_t *buf, size_t len, size_t off,
+                     uint32_t *out)
 {
     if (off + 4 > len)
         return -1;
-    return ((long)buf[off] << 24) |
-           ((long)buf[off + 1] << 16) |
-           ((long)buf[off + 2] << 8) |
-           ((long)buf[off + 3]);
+    *out = ((uint32_t)buf[off] << 24) |
+           ((uint32_t)buf[off + 1] << 16) |
+           ((uint32_t)buf[off + 2] << 8) |
+           ((uint32_t)buf[off + 3]);
+    return 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -146,8 +157,8 @@ int bit_find_payload(const uint8_t *buf, size_t file_len,
         if (tag == 0x65)
         {
             /* 4-byte big-endian payload length */
-            long payload_len = read_be32(buf, file_len, off);
-            if (payload_len < 0)
+            uint32_t payload_len = 0;
+            if (read_be32(buf, file_len, off, &payload_len) != 0)
             {
                 fprintf(stderr, "[bit2bin] File too short for 0x65 length field\n");
                 return -1;
@@ -158,17 +169,17 @@ int bit_find_payload(const uint8_t *buf, size_t file_len,
             if (off + (size_t)payload_len != file_len)
             {
                 fprintf(stderr,
-                        "[bit2bin] Length mismatch: 0x65 says %ld bytes payload, "
+                        "[bit2bin] Length mismatch: 0x65 says %" PRIu32 " bytes payload, "
                         "but %zu bytes remain in file\n",
                         payload_len, file_len - off);
                 return -1;
             }
 
             /* Validate: Vivado guarantees word-aligned payload */
-            if ((size_t)payload_len % 4 != 0)
+            if (payload_len % 4 != 0)
             {
                 fprintf(stderr,
-                        "[bit2bin] Payload length %ld is not a multiple of 4 "
+                        "[bit2bin] Payload length %" PRIu32 " is not a multiple of 4 "
                         "(file may be corrupt)\n",
                         payload_len);
                 return -1;
@@ -266,7 +277,8 @@ int convert_bit_to_bin(const char *input_path, const char *output_path)
      * memcpy() reads the 4 bytes into word without assuming host byte order.
      * swap32() then performs an explicit byte-level reversal regardless of
      * host endianness, making this code correct on both LE and BE hosts.
-     * (In practice this targets ARM little-endian, but no assumption is baked in.)
+     * (In practice this targets ARM little-endian, but no assumption is
+     * baked in.)
      */
     const uint8_t *payload = buf + payload_off;
     size_t words = payload_len / 4;
