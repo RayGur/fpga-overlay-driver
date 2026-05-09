@@ -13,7 +13,7 @@
  *   2. convert_bit_to_bin() succeeds
  *   3. Output /tmp/test_output.bin starts with FF FF FF AA
  *      (sync word preserved, byte order correct)
-. *   4. Output file size == (input size - header_bytes) and is a multiple of 4
+ *   4. Output file size == (input size - header_bytes) and is a multiple of 4
  *
  * Verify manually:
  *   xxd /tmp/test_output.bin | head   # should show FF FF FF AA as first 4 bytes
@@ -120,7 +120,12 @@ int main(int argc, char *argv[])
     if (!pass)
         return 1;
 
-    /* ---- Test 3: output starts with FF FF FF AA ------------------ */
+    /* ---- Test 3: output starts with swapped sync word ------------ */
+    /*
+     * swap32(0xFFFFFFAA) = 0xAAFFFFFF
+     * In little-endian memory the bytes are: AA FF FF FF
+     * FPGA Manager on ARM reads this back as 0xFFFFFFAA ✓
+     */
     size_t out_len = 0;
     uint8_t *out_buf = read_file(OUTPUT_PATH, &out_len);
     if (!out_buf)
@@ -129,27 +134,30 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    static const uint8_t SYNC[4] = {0xFF, 0xFF, 0xFF, 0xAA};
+    static const uint8_t SWAPPED_SYNC[4] = {0xAA, 0xFF, 0xFF, 0xFF};
     if (out_len < 4 ||
-        out_buf[0] != SYNC[0] || out_buf[1] != SYNC[1] ||
-        out_buf[2] != SYNC[2] || out_buf[3] != SYNC[3])
+        out_buf[0] != SWAPPED_SYNC[0] || out_buf[1] != SWAPPED_SYNC[1] ||
+        out_buf[2] != SWAPPED_SYNC[2] || out_buf[3] != SWAPPED_SYNC[3])
     {
-        fprintf(stderr, "FAIL [test3]: output does not start with FF FF FF AA\n");
+        fprintf(stderr, "FAIL [test3]: output does not start with AA FF FF FF "
+                        "(expected swap32(FF FF FF AA))\n");
         fprintf(stderr, "  First 4 bytes: %02X %02X %02X %02X\n",
                 out_buf[0], out_buf[1], out_buf[2], out_buf[3]);
         pass = 0;
     }
     else
     {
-        printf("PASS [test3]: output starts with FF FF FF AA ✓\n");
+        printf("PASS [test3]: output starts with AA FF FF FF "
+               "(= swap32(FF FF FF AA)) ✓\n");
     }
 
-    /* ---- Test 4: output size is multiple of 4 -------------------- */
+    /* ---- Test 4: output size is word-aligned --------------------- */
     if (out_len % 4 != 0)
     {
-        fprintf(stderr, "WARN [test4]: output size %zu is not a multiple of 4 "
-                        "(may indicate truncated input)\n",
+        fprintf(stderr, "FAIL [test4]: output size %zu is not a multiple of 4 "
+                        "(padding logic broken)\n",
                 out_len);
+        pass = 0;
     }
     else
     {
