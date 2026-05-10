@@ -38,7 +38,7 @@ OBJS := $(SRCS:.c=.o)
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ -lexpat
 	@echo "[✓] Built: $(TARGET)"
 
 src/%.o: src/%.c

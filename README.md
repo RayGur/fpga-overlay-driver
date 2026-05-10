@@ -1,10 +1,10 @@
 # FPGA Overlay Driver
 
-不依賴 PYNQ 的 Bitstream 載入工具。以 C Userspace Library 直接透過 Linux FPGA Manager sysfs 介面載入 bitstream、解析 HWH 取得 IP 位址、並以 `/dev/mem` 讀寫 PL 暫存器。
+不依賴 PYNQ 的 Bitstream 載入工具。以 C Userspace Library 直接透過 Linux FPGA Manager 載入 bitstream、解析 HWH 取得 IP 位址、並以 `/dev/mem` 讀寫 PL 暫存器。
 
 ## 背景
 
-PYNQ 框架層次厚、Python overhead 重，在以下情境不適用：
+PYNQ 框架在以下情境不適用：
 - 無 PYNQ 環境的 Linux 系統
 - 需要避免 Python overhead 直接操控硬體
 - BCI 等即時性要求較高的應用
@@ -16,111 +16,121 @@ PYNQ 框架層次厚、Python overhead 重，在以下情境不適用：
 | 板子 | 用途 | 晶片 | ARM |
 |------|------|------|-----|
 | PYNQ-Z2 | 開發驗證 | XC7Z020 | Cortex-A9 (32-bit) |
-| Kria KV260 | 部署目標 | XCK26 | Cortex-A53 (64-bit) |
+| Kria KV260 | 部署目標（Phase 7） | XCK26 | Cortex-A53 (64-bit) |
 
 ## 模組架構
 
 ```
 src/
-├── bit2bin.c      將 Vivado .bit 轉為 FPGA Manager 可接受的 .bin
+├── bit2bin.c      將 Vivado .bit 轉為 FPGA Manager 可接受的 .bin（剝 header、byte-swap）
 ├── hwh_parser.c   解析 .hwh XML，取得各 IP Core 的 base/high address
 ├── fpga_load.c    操作 sysfs，觸發 FPGA Manager 載入 bitstream
 ├── mmio.c         /dev/mem + mmap，讀寫 PL 暫存器
-└── main.c         CLI 整合入口
-```
-
-## CLI 介面
-
-```bash
-./overlay load design.bit design.hwh   # 轉換並載入 bitstream
-./overlay list                          # 列出所有 IP Core 與位址
-./overlay write axi_gpio_0 0x00 0xFF   # 寫暫存器
-./overlay read  axi_gpio_0 0x00        # 讀暫存器
-```
-
-## 開發流程
-
-```bash
-# Windows 上寫 code，SCP 傳板子，SSH 進去編譯
-scp src/bit2bin.c xilinx@192.168.2.99:~/fpga-overlay-driver/src/
-ssh xilinx@192.168.2.99
-cd fpga-overlay-driver && make
+└── main.c         CLI 入口，整合以上四個模組
 ```
 
 ## Build
 
+**依賴**：`libexpat1-dev`（`sudo apt install libexpat1-dev`）
+
 ```bash
-# PYNQ-Z2（32-bit）
+# PYNQ-Z2（32-bit address）
 make PLATFORM=Z2
 
-# KV260（64-bit，Step 7 之後）
-make PLATFORM=KV260
+# KV260（64-bit address，Phase 7）
+make
 
-# 只跑 unit tests
+# 只建 unit tests
 make tests
 
 # 清除
 make clean
 ```
 
-## 當前進度
+## CLI 使用方式
 
-| Step | 內容 | 狀態 |
-|------|------|------|
-| Phase 1 | 環境確認（FPGA Manager、/lib/firmware、/dev/mem） | ✅ 完成 |
-| Phase 2 | bit2bin.c | ✅ 完成，已驗證 |
-| Phase 3 | fpga_load.c | ✅ 完成，已驗證 |
-| Phase 4 | hwh_parser.c | ✅ 完成，已驗證 |
-| Phase 5 | mmio.c | 🔲 待開發 |
-| Phase 6 | CLI 整合 + 錯誤處理 | 🔲 待開發 |
-| Phase 7 | 移植至 KV260 | 🔲 待開發 |
+```bash
+# 轉換 .bit → .bin 並載入 FPGA
+sudo ./overlay load  <design.bit> <design.hwh>
 
-## hwh_parser 設計說明
+# 列出 .hwh 中所有 IP Core 與位址
+     ./overlay list  <design.hwh>
 
-Vivado 輸出的 `.hwh` 是 XML 格式，每個 IP Core 的 AXI 地址映射記錄在 `<MEMRANGE>` 元素中：
-
-```xml
-<MEMRANGE INSTANCE="cordic_1"
-          BASEVALUE="0x40000000" HIGHVALUE="0x4000FFFF"
-          MEMTYPE="REGISTER" .../>
+# 讀寫指定 IP Core 的暫存器
+sudo ./overlay read  <design.hwh> <ip_name> <offset_hex>
+sudo ./overlay write <design.hwh> <ip_name> <offset_hex> <value_hex>
 ```
 
-解析策略（參考 PYNQ 的做法）：
-- 使用 **libexpat SAX** 逐事件掃描，只關心 `<MEMRANGE>` 元素
-- 過濾條件：`MEMTYPE="REGISTER"`，排除 `MEMTYPE="MEMORY"`（DDR/QSPI）
-- 同一 `INSTANCE` 若有多個 slave interface，只取第一筆
-- 地址型別使用 `fpga_addr_t`，32/64-bit 由平台設定決定
+`load` / `read` / `write` 需要 root（存取 `/lib/firmware/` 與 `/dev/mem`）。
 
-```c
-ip_map_t map;
-parse_hwh("design.hwh", &map);          // 解析
-const ip_core_t *ip = find_ip_by_name(&map, "cordic_1");  // 查找
-print_ip_map(&map);                      // 列印
+### 範例（cordic design）
+
+```bash
+$ sudo ./overlay load design_1.bit design_1.hwh
+[✓] Converted design_1.bit → design_1.bin
+[✓] Parsed 1 IP cores from design_1.hwh
+[✓] Bitstream loaded, FPGA state: operating
+
+$ ./overlay list design_1.hwh
+IP Cores (1):
+  cordic_1    base=0x40000000  high=0x4000FFFF
+
+$ sudo ./overlay read design_1.hwh cordic_1 0x00
+0x00000004
+
+$ sudo ./overlay write design_1.hwh cordic_1 0x00 0x00000001
+[✓] Wrote 0x00000001 to cordic_1 offset 0x0
 ```
 
-依賴：`libexpat1-dev`（`-lexpat`）。
+## 開發指南
 
----
+本專案在 Windows 上編輯，透過 SCP 同步到板子上以 native gcc 編譯與測試。
 
-## bit2bin 設計說明
+```bash
+# 1. 同步檔案到板子
+scp -r src/ include/ Makefile xilinx@pynq-z2:~/fpga-overlay-driver/
 
-Vivado 產出的 `.bit` 檔有兩個問題讓它無法直接送給 FPGA Manager：
+# 2. SSH 進板子編譯
+ssh xilinx@pynq-z2
+cd fpga-overlay-driver
+make PLATFORM=Z2
+```
 
-1. **有 TLV header**：前面是設計名稱、晶片型號、日期等 metadata，FPGA Manager 不認識
-2. **Big-endian**：payload 的每個 32-bit word 是 big-endian，ARM 是 little-endian
+**開發規則：**
+- 位址型別一律用 `fpga_addr_t`，不直接用 `uint32_t` / `uint64_t`（定義在 `include/config.h`）
+- 每個模組獨立驗證後才整合進 `main.c`
+- 操作 `/lib/firmware/` 或寫 sysfs 前確認你知道這是不可逆操作
 
-轉換方式：
-- 解析 TLV header，找到 tag `0x65`，其 4-byte length 欄位給出 payload 的精確大小
-- 對 payload 每個 word 做 `swap32()`，寫出 `.bin`
+## 測試指南
 
-Xilinx 定義的 sync word 值為 `0xAA995566`（Xilinx UG470: 7 Series FPGAs Configuration User Guide）。在 `.bit` 裡以 big-endian 存成 bytes `AA 99 55 66`；經過 `swap32` 後在 `.bin` 裡變成 bytes `66 55 99 AA`；ARM 以 little-endian 讀這 4 個 bytes，得到 uint32 值 `0xAA995566`，正確。
+每個模組有對應的獨立測試程式，放在 `test/`：
 
-> ⚠️ `FF FF FF AA` 不是 sync word，是 NOP preamble，不可用來定位 payload 起點。
+```bash
+# 建置所有 unit tests
+make tests PLATFORM=Z2
 
-## 平台移植
+# bit2bin：驗證 .bit → .bin 轉換輸出正確
+sudo ./test/test_bit2bin <design.bit>
+
+# hwh_parser：驗證 IP Core 地址解析
+./test/test_hwh_parser <design.hwh>
+```
+
+`main.c` 的 end-to-end 測試需要實際 bitstream，測試資料放在 `testing_data/`：
+
+```bash
+# 完整流程測試
+sudo ./overlay load  testing_data/cordic/design_1.bit testing_data/cordic/design_1.hwh
+     ./overlay list  testing_data/cordic/design_1.hwh
+sudo ./overlay read  testing_data/cordic/design_1.hwh cordic_1 0x00
+sudo ./overlay write testing_data/cordic/design_1.hwh cordic_1 0x00 0x1
+```
+
+## 平台抽象
+
+所有地址型別使用 `fpga_addr_t`，定義於 `include/config.h`：
 
 ```c
-// include/config.h
 #ifdef ZYNQ7000
     typedef uint32_t fpga_addr_t;   // PYNQ-Z2
 #else
@@ -128,16 +138,38 @@ Xilinx 定義的 sync word 值為 `0xAA995566`（Xilinx UG470: 7 Series FPGAs Co
 #endif
 ```
 
-KV260 主要差異：64-bit AXI address、TrustZone（部分記憶體區域受限）、bitstream 需重新合成。
+移植 KV260 時只需改 Makefile 的 `PLATFORM` 參數，其餘 `.c` 不需動。
 
 ## 注意事項
 
-- `fpga_load` 和 `mmio` 需要 root（`sudo`）
-- FPGA Manager 寫入順序：先寫 `flags`，再寫 `firmware`，順序錯了不報錯但載入失敗
-- `.bin` 須先放到 `/lib/firmware/`，FPGA Manager 才能讀取
-- mmap offset 需 page-align（4096 bytes），詳見 `mmio.c`
+- FPGA Manager 寫入順序：先寫 `flags`，再寫 `firmware`；順序錯誤不報錯但載入會失敗
+- `.bin` 必須先複製到 `/lib/firmware/`，FPGA Manager 才能讀取
+- mmap offset 需 page-align（4096 bytes），`mmio.c` 內部處理
+- KV260 移植須注意 TrustZone 記憶體限制與 64-bit `off_t`，詳見 `docs/phase7.md`
 
 ## 已知限制
 
-- `bit2bin` 只用兩個同版本 Vivado（2022.2）的 `.bit` 測試過，不同版本 header 尚未驗證
-- 遇到無法解析的格式，`bit_find_payload()` 會明確報錯（`-1`），不會靜默產生錯誤輸出
+- `bit2bin` 只以 Vivado 2022.2 產出的 `.bit` 驗證過；不同版本的 header 格式未驗證
+- `bit_find_payload()` 遇到無法解析的格式會明確報錯（回傳 `-1`），不會靜默產生錯誤輸出
+- 目前不支援 partial reconfiguration（partial bitstream）
+- DMA 與中斷不在此工具範疇內
+
+## 當前進度
+
+| Phase | 內容 | 狀態 |
+|-------|------|------|
+| 1 | 環境確認（FPGA Manager、/lib/firmware、/dev/mem） | ✅ 完成 |
+| 2 | `bit2bin.c` — .bit → .bin 轉換 | ✅ 完成，板子驗證通過 |
+| 3 | `fpga_load.c` — FPGA Manager sysfs 載入 | ✅ 完成，板子驗證通過 |
+| 4 | `hwh_parser.c` — HWH XML 解析 | ✅ 完成，板子驗證通過 |
+| 5 | `mmio.c` — /dev/mem mmap 讀寫 | ✅ 完成，板子驗證通過 |
+| 6 | `main.c` — CLI 整合 | ✅ 完成，板子驗證通過 |
+| 7 | KV260 移植 | 🔲 待開發 |
+
+## 文件索引
+
+| 主題 | 文件 |
+|------|------|
+| 整體架構與 Phase 清單 | `docs/plan.md` |
+| 設計決策紀錄 | `docs/decisions.md` |
+| KV260 移植注意事項 | `docs/phase7.md` |
