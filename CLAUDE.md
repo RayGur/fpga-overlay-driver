@@ -36,7 +36,8 @@ C userspace 工具，將 Vivado `.bit` 載入 Zynq FPGA，不依賴 PYNQ。
 - ✅ Phase 1：環境確認（手動 shell 驗證 FPGA Manager 正常）
 - ✅ Phase 2：`bit2bin.c` 實作完成，板子驗證通過
 - ✅ Phase 3：`fpga_load.c` 實作完成，板子驗證通過（cordic.bit → operating）
-- 🔲 **下一步**：Phase 4 — 實作 `hwh_parser.c`（解析 .hwh XML，取得各 IP base address）
+- ✅ Phase 4：`hwh_parser.c` 實作完成，板子驗證通過（libexpat SAX，掃描 MEMRANGE）
+- 🔲 **下一步**：Phase 5 — 實作 `mmio.c`（`/dev/mem` + mmap，讀寫 PL 暫存器）
 
 ## 關鍵文件索引
 

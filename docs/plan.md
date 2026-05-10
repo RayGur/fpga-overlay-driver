@@ -126,9 +126,9 @@ fpga-overlay-driver/
 
 | Step | 說明 | 狀態 |
 |------|------|------|
-| 4.1 | 設計 `hwh_parser.h` API（IP core struct） | 🔲 待實作 |
-| 4.2 | 實作 XML 解析（expat 或手刻 SAX-like parser） | 🔲 待實作 |
-| 4.3 | 以 `test_hwh_parser.c` 驗證 address map 正確 | 🔲 待驗證 |
+| 4.1 | 設計 `hwh_parser.h` API（IP core struct） | ✅ 完成 |
+| 4.2 | 實作 XML 解析（libexpat SAX，掃描 MEMRANGE） | ✅ 完成 |
+| 4.3 | 以 `test_hwh_parser.c` 驗證 address map 正確 | ✅ 完成 |
 
 ### Phase 5 — MMIO 存取（mmio）
 
@@ -163,7 +163,8 @@ fpga-overlay-driver/
 ✅ Phase 1 — 環境確認         完成
 ✅ Phase 2 — bit2bin          實作完成，板子驗證通過
 ✅ Phase 3 — fpga_load        實作完成，板子驗證通過
-🔲 Phase 4 — hwh_parser       下一步
+✅ Phase 4 — hwh_parser       實作完成，板子驗證通過
+🔲 Phase 5 — mmio             下一步
 ```
 
 ---
