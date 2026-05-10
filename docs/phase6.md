@@ -1,6 +1,6 @@
 # Phase 6 — CLI 整合
 
-> 狀態：🔲 待開始
+> 狀態：✅ 完成（板子驗證通過）
 
 ---
 
@@ -23,7 +23,7 @@
 
 ## Step 6.1 — 設計 CLI 介面
 
-🔲 待實作
+✅ 完成（`main.c` skeleton 已含 `parse_command` 邏輯與 `print_usage`）
 
 ### 引數解析結構
 
@@ -38,7 +38,7 @@ void  print_usage(const char *prog);
 
 ## Step 6.2 — 整合模組到 main.c
 
-🔲 待實作
+✅ 完成
 
 ### load 流程
 
@@ -58,7 +58,7 @@ hwh_parse → hwh_find_core(ip_name) → mmio_open(base_addr)
 
 ## Step 6.3 — 錯誤處理規格
 
-🔲 待實作
+✅ 完成
 
 | 錯誤 | 回傳碼 | 訊息格式 |
 |------|--------|---------|
@@ -73,25 +73,31 @@ hwh_parse → hwh_find_core(ip_name) → mmio_open(base_addr)
 
 ## Step 6.4 — 完整流程 end-to-end 測試
 
-🔲 待驗證
+✅ 完成（PYNQ-Z2，cordic design，2026-05-11）
 
 ```bash
-sudo ./overlay load design.bit design.hwh
-# [✓] Converted design.bit → design.bin
-# [✓] Parsed 3 IP cores from design.hwh
-# [✓] Bitstream loaded, FPGA state: operating
+$ sudo ./overlay load testing_data/cordic/design_1.bit testing_data/cordic/design_1.hwh
+[✓] Converted testing_data/cordic/design_1.bit → testing_data/cordic/design_1.bin
+[✓] Parsed 1 IP cores from testing_data/cordic/design_1.hwh
+[✓] Bitstream loaded, FPGA state: operating
 
-./overlay list design.hwh
-# IP Cores:
-#   axi_gpio_0  @ 0x41200000
-#   axi_timer_0 @ 0x42800000
+$ ./overlay list testing_data/cordic/design_1.hwh
+IP Cores (1):
+  cordic_1                         base=0x40000000  high=0x4000FFFF
 
-sudo ./overlay write design.hwh axi_gpio_0 0x00 0xFF
-# [✓] Written 0xFF to axi_gpio_0 @ offset 0x00
+$ sudo ./overlay read testing_data/cordic/design_1.hwh cordic_1 0x00
+0x00000004
 
-sudo ./overlay read design.hwh axi_gpio_0 0x00
-# 0x000000FF
+$ sudo ./overlay write testing_data/cordic/design_1.hwh cordic_1 0x00 0x00000001
+[✓] Wrote 0x00000001 to cordic_1 offset 0x0
+
+$ sudo ./overlay read testing_data/cordic/design_1.hwh cordic_1 0x00
+0x0000000E
 ```
+
+**readback 說明**：`0x00` 是 HLS IP 的 `AP_CTRL` register。寫 `0x1`（ap_start）
+後 CORDIC 執行完成，回報 `0xE`（bits 3:1 = ap_done + ap_idle + ap_ready 全高），
+代表 write+read 均正常，IP 有真實回應。
 
 ---
 
