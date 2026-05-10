@@ -67,14 +67,13 @@ make clean
 
 | Step | 內容 | 狀態 |
 |------|------|------|
-| Phase 0 | 環境確認（FPGA Manager、/lib/firmware、/dev/mem） | ✅ 完成 |
-| Phase 1 | Repo 建立、目錄結構、骨架檔案 | ✅ 完成 |
-| Step 2 | bit2bin.c | ✅ 完成，已驗證 |
-| Step 3 | fpga_load.c | 🔲 進行中 |
-| Step 4 | hwh_parser.c | 🔲 待開發 |
-| Step 5 | mmio.c | 🔲 待開發 |
-| Step 6 | CLI 整合 + 錯誤處理 | 🔲 待開發 |
-| Step 7 | 移植至 KV260 | 🔲 待開發 |
+| Phase 1 | 環境確認（FPGA Manager、/lib/firmware、/dev/mem） | ✅ 完成 |
+| Phase 2 | bit2bin.c | ✅ 完成，已驗證 |
+| Phase 3 | fpga_load.c | ✅ 完成，已驗證 |
+| Phase 4 | hwh_parser.c | 🔲 待開發 |
+| Phase 5 | mmio.c | 🔲 待開發 |
+| Phase 6 | CLI 整合 + 錯誤處理 | 🔲 待開發 |
+| Phase 7 | 移植至 KV260 | 🔲 待開發 |
 
 ## bit2bin 設計說明
 
