@@ -32,11 +32,13 @@ src/
 ## CLI 介面
 
 ```bash
-./overlay load design.bit design.hwh   # 轉換並載入 bitstream
-./overlay list                          # 列出所有 IP Core 與位址
-./overlay write axi_gpio_0 0x00 0xFF   # 寫暫存器
-./overlay read  axi_gpio_0 0x00        # 讀暫存器
+sudo ./overlay load  design.bit design.hwh            # 轉換並載入 bitstream
+     ./overlay list  design.hwh                       # 列出所有 IP Core 與位址
+sudo ./overlay read  design.hwh axi_gpio_0 0x00       # 讀暫存器
+sudo ./overlay write design.hwh axi_gpio_0 0x00 0xFF  # 寫暫存器
 ```
+
+`load`/`read`/`write` 需要 root（存取 `/lib/firmware/` 與 `/dev/mem`）。
 
 ## 開發流程
 
@@ -53,8 +55,8 @@ cd fpga-overlay-driver && make
 # PYNQ-Z2（32-bit）
 make PLATFORM=Z2
 
-# KV260（64-bit，Step 7 之後）
-make PLATFORM=KV260
+# KV260（64-bit，Phase 7 之後）
+make
 
 # 只跑 unit tests
 make tests
@@ -71,8 +73,8 @@ make clean
 | Phase 2 | bit2bin.c | ✅ 完成，已驗證 |
 | Phase 3 | fpga_load.c | ✅ 完成，已驗證 |
 | Phase 4 | hwh_parser.c | ✅ 完成，已驗證 |
-| Phase 5 | mmio.c | 🔲 待開發 |
-| Phase 6 | CLI 整合 + 錯誤處理 | 🔲 待開發 |
+| Phase 5 | mmio.c | ✅ 完成，已驗證 |
+| Phase 6 | CLI 整合 + 錯誤處理 | ✅ 完成，已驗證 |
 | Phase 7 | 移植至 KV260 | 🔲 待開發 |
 
 ## hwh_parser 設計說明
