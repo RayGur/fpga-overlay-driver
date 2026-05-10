@@ -35,15 +35,17 @@ C userspace 工具，將 Vivado `.bit` 載入 Zynq FPGA，不依賴 PYNQ。
 
 - ✅ Phase 1：環境確認（手動 shell 驗證 FPGA Manager 正常）
 - ✅ Phase 2：`bit2bin.c` 實作完成，板子驗證通過
-- 🔲 **下一步**：Phase 3 — 實作 `fpga_load.c`（copy_to_firmware + sysfs 觸發 + poll state）
+- ✅ Phase 3：`fpga_load.c` 實作完成，板子驗證通過（cordic.bit → operating）
+- 🔲 **下一步**：Phase 4 — 實作 `hwh_parser.c`（解析 .hwh XML，取得各 IP base address）
 
 ## 關鍵文件索引
 
 | 需要了解… | 看這裡 |
 |-----------|--------|
 | 整體架構與所有 Phase 清單 | `docs/plan.md` |
-| 目前正在做的模組（bit2bin）| `docs/phase2.md` |
-| 下一個模組（fpga_load）| `docs/phase3.md` |
+| bit2bin 模組 | `docs/phase2.md` |
+| fpga_load 模組 | `docs/phase3.md` |
+| 下一個模組（hwh_parser）| `docs/phase4.md` |
 | hwh_parser | `docs/phase4.md` |
 | mmio | `docs/phase5.md` |
 | CLI 整合 | `docs/phase6.md` |
