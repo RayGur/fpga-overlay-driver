@@ -37,7 +37,8 @@ C userspace 工具，將 Vivado `.bit` 載入 Zynq FPGA，不依賴 PYNQ。
 - ✅ Phase 2：`bit2bin.c` 實作完成，板子驗證通過
 - ✅ Phase 3：`fpga_load.c` 實作完成，板子驗證通過（cordic.bit → operating）
 - ✅ Phase 4：`hwh_parser.c` 實作完成，板子驗證通過（libexpat SAX，掃描 MEMRANGE）
-- 🔲 **下一步**：Phase 5 — 實作 `mmio.c`（`/dev/mem` + mmap，讀寫 PL 暫存器）
+- ✅ Phase 5：`mmio.c` 實作完成，板子驗證通過（open/mmap/read/write，write+readback 留待 Phase 6 完整驗證）
+- 🔲 **下一步**：Phase 6 — CLI 整合（`main.c`，`load` / `list` / `read` / `write`）
 
 ## 關鍵文件索引
 
@@ -46,9 +47,9 @@ C userspace 工具，將 Vivado `.bit` 載入 Zynq FPGA，不依賴 PYNQ。
 | 整體架構與所有 Phase 清單 | `docs/plan.md` |
 | bit2bin 模組 | `docs/phase2.md` |
 | fpga_load 模組 | `docs/phase3.md` |
-| 下一個模組（hwh_parser）| `docs/phase4.md` |
 | hwh_parser | `docs/phase4.md` |
 | mmio | `docs/phase5.md` |
+| CLI 整合（下一步）| `docs/phase6.md` |
 | CLI 整合 | `docs/phase6.md` |
 | KV260 移植 | `docs/phase7.md` |
 | 為什麼這樣設計 | `docs/decisions.md` |

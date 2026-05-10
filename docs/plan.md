@@ -134,9 +134,9 @@ fpga-overlay-driver/
 
 | Step | 說明 | 狀態 |
 |------|------|------|
-| 5.1 | 設計 `mmio.h` API | 🔲 待實作 |
-| 5.2 | 實作 `mmio_open()` / `mmio_read()` / `mmio_write()` / `mmio_close()` | 🔲 待實作 |
-| 5.3 | 驗證讀寫 axi_gpio 等已知 IP 暫存器 | 🔲 待驗證 |
+| 5.1 | 設計 `mmio.h` API | ✅ 完成 |
+| 5.2 | 實作 `mmio_open()` / `mmio_read32()` / `mmio_write32()` / `mmio_close()` | ✅ 完成 |
+| 5.3 | 驗證讀寫 axi_gpio 等已知 IP 暫存器 | ✅ 完成（部分，write+readback 留待 Phase 6） |
 
 ### Phase 6 — CLI 整合
 
@@ -164,7 +164,8 @@ fpga-overlay-driver/
 ✅ Phase 2 — bit2bin          實作完成，板子驗證通過
 ✅ Phase 3 — fpga_load        實作完成，板子驗證通過
 ✅ Phase 4 — hwh_parser       實作完成，板子驗證通過
-🔲 Phase 5 — mmio             下一步
+✅ Phase 5 — mmio             實作完成，板子驗證通過（open/mmap/read/write）
+🔲 Phase 6 — CLI 整合         下一步
 ```
 
 ---
