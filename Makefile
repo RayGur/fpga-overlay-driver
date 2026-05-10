@@ -57,7 +57,7 @@ $(TEST_BIT2BIN): test/test_bit2bin.c src/bit2bin.c
 	$(CC) $(CFLAGS) -o $@ $^
 
 $(TEST_HWH_PARSER): test/test_hwh_parser.c src/hwh_parser.c
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ -lexpat
 
 # ─── Clean ────────────────────────────────────────────────
 
