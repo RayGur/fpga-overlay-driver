@@ -118,21 +118,38 @@ Byte-by-byte 掃描 sync word `0xFFFFFFAA`：實作簡單，但有誤判 payload
 
 ---
 
-## DEC-06：hwh_parser 的 XML 解析策略（待定）
+## DEC-06：hwh_parser 的 XML 解析策略
 
 **決策內容**
-尚未決定：使用 `libexpat` 或手刻字串掃描。
+使用 **libexpat SAX**，不做手刻字串掃描。
 
-**當前狀態**
-待 Phase 4 開始前，先在板子上確認 `libexpat1-dev` 是否可用：
-```bash
-dpkg -l libexpat1-dev
-```
+**原因**
+- 板子已安裝 `libexpat1-dev` 2.2.5-3（`dpkg -l` 確認）
+- SAX 解析無需建構 DOM 樹，記憶體用量固定
+- 標準函式庫，邊界條件由 expat 處理，不怕 XML 屬性順序或空白差異
 
-**傾向**
-- 若 libexpat 可用 → 使用 libexpat（標準、可靠）
-- 若不可用且不想裝套件 → 手刻掃描（`.hwh` 格式固定，風險可控）
+**替代方案（未採用）**
+- 手刻 strstr 掃描：零相依，但 XML 屬性順序不保證，維護性差
 
 **影響範圍**
-- `src/hwh_parser.c` 的實作方式
-- Makefile 的 linking flags（`-lexpat` 或不需要）
+- `src/hwh_parser.c`：使用 `XML_ParserCreate` / `XML_SetElementHandler`
+- Makefile：`-lexpat`
+
+---
+
+## DEC-07：hwh_parser 掃描 MEMRANGE 而非 MODULE PARAMETER
+
+**決策內容**
+解析地址映射時，掃描 `<MEMRANGE MEMTYPE="REGISTER">` 元素，而非掃描各 IP `<MODULE>` 內的 `<PARAMETER NAME="*_BASEADDR">` 屬性。
+
+**原因**
+- 實際 HWH 中地址參數名帶有 IP 特定前綴（如 `C_S_AXI_CTRL_BASEADDR`），無法用固定名稱匹配
+- `MEMRANGE` 的 `INSTANCE` / `BASEVALUE` / `HIGHVALUE` 屬性名稱固定，不隨 IP 類型變化
+- `MEMRANGE` 語意是「PS 可見的 slave 地址映射」，正好是 Linux MMIO 需要的視角
+- PYNQ 的 `hwh_parser.py` 也採用此策略
+
+**過濾規則**
+只保留 `MEMTYPE="REGISTER"` 的 MEMRANGE，排除 `MEMTYPE="MEMORY"`（DDR/QSPI）。
+
+**影響範圍**
+- `src/hwh_parser.c`：`start_handler()` 只處理 `MEMRANGE` 元素

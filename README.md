@@ -70,10 +70,37 @@ make clean
 | Phase 1 | 環境確認（FPGA Manager、/lib/firmware、/dev/mem） | ✅ 完成 |
 | Phase 2 | bit2bin.c | ✅ 完成，已驗證 |
 | Phase 3 | fpga_load.c | ✅ 完成，已驗證 |
-| Phase 4 | hwh_parser.c | 🔲 待開發 |
+| Phase 4 | hwh_parser.c | ✅ 完成，已驗證 |
 | Phase 5 | mmio.c | 🔲 待開發 |
 | Phase 6 | CLI 整合 + 錯誤處理 | 🔲 待開發 |
 | Phase 7 | 移植至 KV260 | 🔲 待開發 |
+
+## hwh_parser 設計說明
+
+Vivado 輸出的 `.hwh` 是 XML 格式，每個 IP Core 的 AXI 地址映射記錄在 `<MEMRANGE>` 元素中：
+
+```xml
+<MEMRANGE INSTANCE="cordic_1"
+          BASEVALUE="0x40000000" HIGHVALUE="0x4000FFFF"
+          MEMTYPE="REGISTER" .../>
+```
+
+解析策略（參考 PYNQ 的做法）：
+- 使用 **libexpat SAX** 逐事件掃描，只關心 `<MEMRANGE>` 元素
+- 過濾條件：`MEMTYPE="REGISTER"`，排除 `MEMTYPE="MEMORY"`（DDR/QSPI）
+- 同一 `INSTANCE` 若有多個 slave interface，只取第一筆
+- 地址型別使用 `fpga_addr_t`，32/64-bit 由平台設定決定
+
+```c
+ip_map_t map;
+parse_hwh("design.hwh", &map);          // 解析
+const ip_core_t *ip = find_ip_by_name(&map, "cordic_1");  // 查找
+print_ip_map(&map);                      // 列印
+```
+
+依賴：`libexpat1-dev`（`-lexpat`）。
+
+---
 
 ## bit2bin 設計說明
 
