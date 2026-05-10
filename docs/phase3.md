@@ -1,6 +1,6 @@
 # Phase 3 — FPGA 載入（fpga_load）
 
-> 狀態：Skeleton ✅ 完成 · 實作 🔲 待開始
+> 狀態：✅ 完成（實作 + 板子驗證通過）
 
 ---
 
@@ -29,8 +29,8 @@ poll /sys/class/fpga_manager/fpga0/state until "operating"
 現有 skeleton 包含：
 - `write_sysfs()` — 內部 helper，寫字串到 sysfs file ✅
 - `read_sysfs()` — 內部 helper，從 sysfs file 讀一行 ✅
-- `copy_to_firmware()` — TODO
-- `fpga_load_bitstream()` — TODO
+- `copy_to_firmware()` — ✅ 完成
+- `fpga_load_bitstream()` — ✅ 完成
 - `fpga_get_state()` — 已實作（呼叫 `read_sysfs`）✅
 
 ---
@@ -135,7 +135,7 @@ int fpga_load_bitstream(const char *bin_path)
 
 ## Step 3.4 — 端對端驗證
 
-🔲 待驗證
+✅ 完成（cordic.bit 在 PYNQ-Z2 驗證通過，state → operating）
 
 ### 操作步驟
 

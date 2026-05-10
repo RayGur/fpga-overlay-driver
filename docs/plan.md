@@ -117,10 +117,10 @@ fpga-overlay-driver/
 
 | Step | 說明 | 狀態 |
 |------|------|------|
-| 3.1 | 設計 `fpga_load.h` API，建立 skeleton | ✅ 完成（skeleton 已存在） |
-| 3.2 | 實作 `copy_to_firmware()` | 🔲 待實作 |
-| 3.3 | 實作 `fpga_load_bitstream()`（寫 sysfs + poll state） | 🔲 待實作 |
-| 3.4 | 端對端驗證：.bit → .bin → FPGA Manager → operating | 🔲 待驗證 |
+| 3.1 | 設計 `fpga_load.h` API，建立 skeleton | ✅ 完成 |
+| 3.2 | 實作 `copy_to_firmware()` | ✅ 完成 |
+| 3.3 | 實作 `fpga_load_bitstream()`（寫 sysfs + poll state） | ✅ 完成 |
+| 3.4 | 端對端驗證：.bit → .bin → FPGA Manager → operating | ✅ 完成 |
 
 ### Phase 4 — HWH 解析（hwh_parser）
 
@@ -162,7 +162,8 @@ fpga-overlay-driver/
 ```
 ✅ Phase 1 — 環境確認         完成
 ✅ Phase 2 — bit2bin          實作完成，板子驗證通過
-🔲 Phase 3 — fpga_load        下一步
+✅ Phase 3 — fpga_load        實作完成，板子驗證通過
+🔲 Phase 4 — hwh_parser       下一步
 ```
 
 ---
