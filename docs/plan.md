@@ -36,10 +36,10 @@ PYNQ 提供了方便的 overlay 機制，但框架層次偏厚、相依性重，
 
 | 項目 | 說明 |
 |------|------|
-| 開發驗證板 | PYNQ-Z2（Zynq-7000 XC7Z020，Cortex-A9 32-bit） |
-| 目標部署板 | Kria KV260（Zynq Ultrascale+ XCK26，Cortex-A53 64-bit） |
+| 開發驗證板 | PYNQ-Z2（XC7Z020，Cortex-A9，32-bit，Ubuntu PYNQ） |
+| 臨時 ZynqMP 測試板 | KD240（XCK24，Cortex-A53，64-bit，Ubuntu 22.04） |
+| 最終目標板 | KV260（XCK26，Cortex-A53，64-bit，Ubuntu 22.04） |
 | 開發方式 | Windows 寫 code → SCP 傳板子 → SSH native gcc 編譯 |
-| OS | PYNQ-Z2 上的 Ubuntu Linux |
 
 ---
 
@@ -147,13 +147,34 @@ fpga-overlay-driver/
 | 6.3 | 錯誤處理與 usage message | 🔲 待實作 |
 | 6.4 | 完整流程 end-to-end 測試 | 🔲 待驗證 |
 
-### Phase 7 — 移植至 KV260
+### Phase 7 — 移植至 KD240（ZynqMP 64-bit 首次驗證）
+
+> 練習板：KD240（xck24，Ubuntu 22.04），架構與 KV260 相同
 
 | Step | 說明 | 狀態 |
 |------|------|------|
-| 7.1 | 以 `ZYNQ7000` 未定義重新編譯，確認 64-bit addr 正確 | 🔲 待移植 |
-| 7.2 | 確認 TrustZone 記憶體限制不影響目標 IP | 🔲 待確認 |
-| 7.3 | 重新合成 KV260 專用 bitstream，端對端驗證 | 🔲 待驗證 |
+| 7.0 | KD240 環境確認（`check_kv260_env.sh`） | 🔲 待執行 |
+| 7.1 | Vivado：建立 AXI GPIO test design（xck24） | 🔲 待建立 |
+| 7.2 | 程式碼調整：64-bit addr、off_t、printf 格式 | 🔲 待調整 |
+| 7.3 | KD240 端對端驗證（load / list / read / write） | 🔲 待驗證 |
+
+### Phase 8 — DMA 支援
+
+| Step | 說明 | 狀態 |
+|------|------|------|
+| 8.0 | 確認 userspace DMA 機制（udmabuf / dma-proxy）可用 | 🔲 待確認 |
+| 8.1 | Vivado：建立 AXI DMA loopback design（xck24） | 🔲 待建立 |
+| 8.2 | 實作 DMA 模組（分配 CMA buffer、設定 descriptor、觸發傳輸） | 🔲 待實作 |
+| 8.3 | CLI 加入 `dma_write` / `dma_read` 指令 | 🔲 待實作 |
+| 8.4 | KD240 端對端 DMA 驗證（MM2S → FIFO loopback → S2MM） | 🔲 待驗證 |
+
+### Phase 9 — 移植至 KV260（最終目標板）
+
+| Step | 說明 | 狀態 |
+|------|------|------|
+| 9.1 | KV260 環境確認（`check_kv260_env.sh`） | 🔲 待執行 |
+| 9.2 | 取得 KV260 專用 bitstream（xck26 重新合成） | 🔲 待取得 |
+| 9.3 | KV260 端對端驗證（GPIO + DMA） | 🔲 待驗證 |
 
 ---
 

@@ -1,151 +1,138 @@
-# Phase 7 — 移植至 KV260
+# Phase 7 — 移植至 KD240（ZynqMP 64-bit 首次驗證）
 
 > 狀態：🔲 待開始
+> 目標板：KD240（xck24，Cortex-A53，64-bit，Ubuntu 22.04）
+> 備註：KD240 架構與最終目標板 KV260 相同，作為 ZynqMP 首次驗證用
 
 ---
 
-## 目標
+## 主要差異（vs PYNQ-Z2）
 
-將在 PYNQ-Z2 驗證完畢的工具移植至 Kria KV260（Zynq Ultrascale+，64-bit，PetaLinux）。
-
----
-
-## 主要差異
-
-| 項目 | PYNQ-Z2 | KV260 |
-|------|---------|-------|
+| 項目 | PYNQ-Z2 | KD240 / KV260 |
+|------|---------|---------------|
 | ARM 架構 | 32-bit Cortex-A9 | 64-bit Cortex-A53 |
 | AXI Address 寬度 | `uint32_t` | `uint64_t` |
-| OS | Ubuntu | PetaLinux（Yocto-based） |
-| 套件管理 | apt | 需在 PetaLinux build 中加入 |
-| Native gcc | 有 | 未確認 |
-| libexpat | 有 | 未確認 |
-| FPGA Manager sysfs | 路徑相同 | 預期相同，待確認 |
-| `.hwh` 格式 | 相同 | 相同 |
-| Bitstream | XC7Z020 專用 | XCK26 專用，需重新合成 |
-| TrustZone | 無 | 有，部分記憶體受限 |
-| `off_t` 大小 | 32-bit（需 `_FILE_OFFSET_BITS=64`） | 原生 64-bit |
+| 晶片 | XC7Z020 | XCK24（KD240）/ XCK26（KV260） |
+| OS | Ubuntu（PYNQ） | Ubuntu 22.04 LTS |
+| gcc / libexpat | 有 | 有（已確認） |
+| FPGA Manager sysfs | 路徑相同 | 預期相同，7.0 確認 |
+| TrustZone | 無 | 有，AXI Peripheral 位址通常 non-secure |
+| `off_t` 大小 | 32-bit | 原生 64-bit |
 
 ---
 
-## Step 7.0 — KV260 環境確認（前提條件）
+## Step 7.0 — KD240 環境確認
 
 🔲 待執行
 
-**在開始任何實作前，先跑環境確認腳本：**
-
 ```bash
-# 本機：scp 到 KV260
-scp check_kv260_env.sh <user>@<kv260-ip>:~
+# 本機 scp 到 KD240
+scp check_kv260_env.sh <user>@<kd240-ip>:~
 
-# KV260 上執行
+# KD240 上執行
 bash check_kv260_env.sh
 ```
 
 腳本位置：`check_kv260_env.sh`（專案根目錄）
 
-### 確認項目與可能問題
-
-#### 2. 編譯工具（gcc / make）
-
-| 結果 | 應對方式 |
-|------|---------|
-| `[PASS]` gcc 存在 | 維持原本 native compile 方式 |
-| `[FAIL]` gcc 不存在 | 改為 cross-compile：主機安裝 `aarch64-linux-gnu-gcc`，Makefile 加 `CROSS_COMPILE` 變數，編好再 scp |
-
-#### 3. libexpat
-
-| 結果 | 應對方式 |
-|------|---------|
-| `[PASS]` library + header 都有 | 不需改動 |
-| `[PASS]` library 有、header 無 | 只需動態連結，但 host cross-compile 需要另外取得 header |
-| `[FAIL]` library 不存在 | **選項 A**：請學長在 PetaLinux build 裡加入 `expat`（`meta-petalinux` 有 recipe）；**選項 B**：將 `hwh_parser.c` 改寫為不依賴 libexpat 的 minimal XML scanner（只掃 MEMRANGE，不需完整 parser） |
-
-#### 4. FPGA Manager sysfs
-
-| 結果 | 應對方式 |
-|------|---------|
-| `[PASS]` 路徑存在、state 可讀 | 不需改動 |
-| `[FAIL]` 路徑不存在 | 確認 KV260 kernel config 有啟用 `CONFIG_FPGA_MGR_ZYNQMP`；路徑可能為 `/sys/class/fpga_manager/fpga0` 以外的名字，查 `ls /sys/class/fpga_manager/` |
-
-#### 5. /dev/mem
-
-| 結果 | 應對方式 |
-|------|---------|
-| `[PASS]` 可讀 | 不需改動 |
-| `[FAIL]` 讀取失敗 | TrustZone 限制，改用 UIO（Userspace I/O）driver 存取 PL registers；需確認目標 IP 的位址範圍是否在 non-secure 區域 |
-
-#### 6. TrustZone / iomem
-
-- AXI Peripheral 位址（通常 `0xA000_0000` 以上）一般屬於 non-secure，`/dev/mem` 可直接存取
-- 若目標 IP 的 base address 落在 secure 區域，會收到 `EPERM`，需改用 UIO
+確認項目：gcc、libexpat、FPGA Manager sysfs、/dev/mem、TrustZone iomem。
+各項 PASS/FAIL 對應應對方式見 `check_kv260_env.sh` 與之前討論。
 
 ---
 
-## Step 7.1 — 重新編譯（不加 ZYNQ7000 定義）
+## Step 7.1 — Vivado：建立 AXI GPIO test design（xck24）
 
-🔲 待移植（依 Step 7.0 結果決定 native 或 cross-compile）
+🔲 待建立
+
+需要一個有 AXI-Lite mapped IP 的 KD240 bitstream，用於驗證 load/list/read/write 完整流程。
+
+### Block Design 組成
+
+```
+zynq_ultra_ps_e_0 ──M_AXI_HPM0_FPD──→ AXI SmartConnect ──→ axi_gpio_0
+proc_sys_reset_0
+```
+
+### 操作步驟
+
+1. **新建專案**：RTL Project，Part 選 `xck24-ubva530-2LV`（或 Board 選 KD240）
+2. **建 Block Design**：IP Integrator → Create Block Design
+3. **加 IP**：
+   - `Zynq UltraScale+ MPSoC`，Run Block Automation
+   - `AXI GPIO`，Width = 8，單 channel
+   - `Processor System Reset`
+4. **連線**：Run Connection Automation → 全勾
+5. **產生**：Generate Block Design → Create HDL Wrapper
+6. **合成**：Run Synthesis → Implementation → Generate Bitstream
+7. **匯出**：
+   - `.bit`：`<project>.runs/impl_1/<wrapper>.bit`
+   - `.hwh`：`<project>.gen/sources_1/bd/<name>/hw_handoff/<name>.hwh`
+8. 存到 `testing_data/kd240_gpio/`
+
+### 預期 AXI GPIO 暫存器
+
+| Offset | 名稱 | 說明 |
+|--------|------|------|
+| `0x00` | GPIO_DATA | 讀寫資料 |
+| `0x04` | GPIO_TRI | 方向（0=output, 1=input） |
+
+驗證方式：寫 `0x04` 設為 output（`0x00`），寫 `0x00` 任意值，readback 確認。
+
+---
+
+## Step 7.2 — 程式碼調整（64-bit 移植）
+
+🔲 待調整
+
+不加 `ZYNQ7000` 定義重新編譯，觸發 `config.h` 的 64-bit 路徑。
 
 ```bash
-# PYNQ-Z2
-make PLATFORM=Z2    # 定義 ZYNQ7000 → fpga_addr_t = uint32_t
-
-# KV260（預設）
-make                # 不定義 ZYNQ7000 → fpga_addr_t = uint64_t
+# KD240 上（不加 PLATFORM=Z2）
+make
 ```
 
-### config.h 切換點
+### 需確認的改動點
 
-```c
-#ifdef ZYNQ7000
-    typedef uint32_t fpga_addr_t;
-    #define FPGA_ADDR_FMT   "0x%08X"
-#else
-    typedef uint64_t fpga_addr_t;
-    #define FPGA_ADDR_FMT   "0x%016lX"
-#endif
-```
-
-**預期改動：僅 `config.h` 的 define，其餘 .c 不需修改。**
+| 項目 | 現狀 | 是否需改 |
+|------|------|---------|
+| `fpga_addr_t` = `uint64_t` | `config.h` 已有 | 不需改，重新編譯即生效 |
+| `FPGA_ADDR_FMT` 使用 `PRIx64` | `config.h` 已有 | 不需改 |
+| `mmap` 的 `off_t` | 加 `-D_FILE_OFFSET_BITS=64` 保險 | Makefile 確認 |
+| printf 格式字串 | 各模組使用 `FPGA_ADDR_FMT` | 確認無直接用 `%x` 印位址 |
 
 ---
 
-## Step 7.2 — TrustZone 確認
-
-🔲 待確認（依 Step 7.0 結果）
-
-### 應對策略
-
-- AXI Peripheral 位址（通常 `0xA000_0000` 以上）一般屬於 non-secure，可直接存取
-- 若受限，改用 UIO（Userspace I/O）driver
-
----
-
-## Step 7.3 — 重新合成 bitstream 並端對端驗證
+## Step 7.3 — KD240 端對端驗證
 
 🔲 待驗證
 
-1. 取得學長提供的 KV260 `.bit` + `.hwh`
-2. SCP 到 KV260
-3. 執行完整 `./overlay load` → `list` → `read` / `write` 流程
-4. 確認結果與 PYNQ-Z2 一致
+```bash
+# scp 編譯好的 binary 和測試資料到 KD240
+scp overlay testing_data/kd240_gpio/* <user>@<kd240-ip>:~/fpga-overlay-driver/
+
+# KD240 上執行
+sudo ./overlay load testing_data/kd240_gpio/<design>.bit testing_data/kd240_gpio/<design>.hwh
+./overlay list testing_data/kd240_gpio/<design>.hwh
+sudo ./overlay write testing_data/kd240_gpio/<design>.hwh axi_gpio_0 0x04 0x00
+sudo ./overlay write testing_data/kd240_gpio/<design>.hwh axi_gpio_0 0x00 0xAB
+sudo ./overlay read  testing_data/kd240_gpio/<design>.hwh axi_gpio_0 0x00
+# 預期讀回 0x000000AB
+```
 
 ---
 
 ## ⚠️ 移植注意事項
 
-1. **`off_t` 問題**：若 KV260 上的 glibc 為 32-bit `off_t`（罕見，但需確認），mmio_open 中的 `mmap(..., (off_t)m->phys_base)` 可能截斷位址。編譯時加 `-D_FILE_OFFSET_BITS=64` 保險。
-
-2. **printf 格式字串**：`fpga_addr_t` 在 64-bit 為 `uint64_t`，使用 `PRIx64`（`<inttypes.h>`）而非直接 `%lX`，確保跨平台正確。`config.h` 的 `FPGA_ADDR_FMT` 已考慮此點。
-
-3. **Bitstream 不可共用**：XC7Z020 與 XCK26 的 bitstream 完全不兼容，務必重新合成。
-
-4. **PetaLinux 套件**：沒有 `apt`，所有需要的函式庫必須在 PetaLinux build 階段加入，或改寫程式碼移除該依賴。
+1. **`off_t`**：編譯加 `-D_FILE_OFFSET_BITS=64`，確保 `mmap` 不截斷 64-bit 位址。
+2. **printf 格式**：使用 `config.h` 的 `FPGA_ADDR_FMT`，不直接用 `%x` 或 `%lx`。
+3. **Bitstream 不共用**：xck24 與 xck26 bitstream 不兼容，Phase 9 需重新合成。
+4. **TrustZone**：AXI Peripheral 位址（通常 `0xA000_0000` 以上）屬 non-secure，`/dev/mem` 可直接存取。
 
 ---
 
 ## 相關文件
 
 - `check_kv260_env.sh` — 環境確認腳本
-- `include/config.h` — 平台切換的唯一入口
-- `docs/plan.md` — 整體移植計畫
+- `include/config.h` — 平台切換（fpga_addr_t）
+- `docs/phase8.md` — DMA 支援（下一步）
+- `docs/phase9.md` — KV260 最終移植
