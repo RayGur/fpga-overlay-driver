@@ -24,6 +24,7 @@ C userspace 工具，將 Vivado `.bit` 載入 Zynq FPGA，不依賴 PYNQ。
 7. 遇到設計決策列出選項問我，不要自己決定。
 8. 不可以自動 reboot；硬體不可逆操作前一定要問我確認。
 9. token 快用完時主動提醒，先更新 CLAUDE.md 和 decisions.md。
+10. **每個新 Phase 開始前，主動列出該 Phase 依賴的前提條件**（目標板工具鏈、函式庫、sysfs 路徑、權限等），確認都已驗證才開始實作。若有未確認項目，先整理成 checklist 請我去板子上跑。
 
 ## 版本控制
 
