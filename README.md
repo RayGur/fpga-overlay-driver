@@ -27,7 +27,8 @@ src/
 ├── hwh_parser.c   解析 .hwh XML，取得各 IP Core 的 base/high address
 ├── fpga_load.c    操作 sysfs，觸發 FPGA Manager 載入 bitstream
 ├── mmio.c         /dev/mem + mmap，讀寫 PL 暫存器
-└── main.c         CLI 入口，整合以上四個模組
+├── dma.c          AXI DMA SG 模式傳輸（Phase 8，開發中）
+└── main.c         CLI 入口，整合以上模組
 ```
 
 ## Build
@@ -151,7 +152,7 @@ sudo ./overlay write testing_data/cordic/design_1.hwh cordic_1 0x00 0x1
 - `bit2bin` 只以 Vivado 2022.2 產出的 `.bit` 驗證過；不同版本的 header 格式未驗證
 - `bit_find_payload()` 遇到無法解析的格式會明確報錯（回傳 `-1`），不會靜默產生錯誤輸出
 - 目前不支援 partial reconfiguration（partial bitstream）
-- DMA 與中斷不在此工具範疇內
+- DMA 支援正在開發中（Phase 8），採用 u-dma-buf + AXI DMA SG 模式
 
 ## 當前進度
 
@@ -164,7 +165,7 @@ sudo ./overlay write testing_data/cordic/design_1.hwh cordic_1 0x00 0x1
 | 5 | `mmio.c` — /dev/mem mmap 讀寫 | ✅ 完成，板子驗證通過 |
 | 6 | `main.c` — CLI 整合 | ✅ 完成，板子驗證通過 |
 | 7 | KD240 移植（ZynqMP 64-bit 首次驗證） | ✅ 完成，板子驗證通過 |
-| 8 | DMA 支援 | 🔲 待開發 |
+| 8 | DMA 支援（u-dma-buf + AXI DMA SG + UIO interrupt，KD240 驗證） | 🔲 開發中 |
 | 9 | KV260 移植（最終目標板） | 🔲 待開發 |
 
 ## 文件索引
@@ -173,4 +174,6 @@ sudo ./overlay write testing_data/cordic/design_1.hwh cordic_1 0x00 0x1
 |------|------|
 | 整體架構與 Phase 清單 | `docs/plan.md` |
 | 設計決策紀錄 | `docs/decisions.md` |
-| KV260 移植注意事項 | `docs/phase7.md` |
+| KD240 移植注意事項 | `docs/phase7.md` |
+| DMA 支援（Phase 8） | `docs/phase8.md` |
+| KV260 最終移植（Phase 9） | `docs/phase9.md` |

@@ -26,9 +26,8 @@ PYNQ 提供了方便的 overlay 機制，但框架層次偏厚、相依性重，
 
 ### 非目標（此階段不實作）
 
-- Kernel Module
+- Kernel Module（除非 u-dma-buf 不足用）
 - Device Tree Overlay 自動化
-- DMA 或中斷處理
 
 ---
 
@@ -64,7 +63,8 @@ fpga-overlay-driver/
 │   ├── bit2bin.c / bit2bin.h
 │   ├── hwh_parser.c / hwh_parser.h
 │   ├── fpga_load.c / fpga_load.h
-│   └── mmio.c / mmio.h
+│   ├── mmio.c / mmio.h
+│   └── dma.c / dma.h          ← Phase 8
 ├── include/
 │   └── config.h
 ├── test/
@@ -79,6 +79,8 @@ fpga-overlay-driver/
     ├── phase5.md
     ├── phase6.md
     ├── phase7.md
+    ├── phase8.md
+    ├── phase9.md
     ├── decisions.md
     └── design.md
 ```
@@ -142,10 +144,10 @@ fpga-overlay-driver/
 
 | Step | 說明 | 狀態 |
 |------|------|------|
-| 6.1 | 設計 CLI 介面（`load` / `list` / `read` / `write`） | 🔲 待實作 |
-| 6.2 | 整合所有模組到 `main.c` | 🔲 待實作 |
-| 6.3 | 錯誤處理與 usage message | 🔲 待實作 |
-| 6.4 | 完整流程 end-to-end 測試 | 🔲 待驗證 |
+| 6.1 | 設計 CLI 介面（`load` / `list` / `read` / `write`） | ✅ 完成 |
+| 6.2 | 整合所有模組到 `main.c` | ✅ 完成 |
+| 6.3 | 錯誤處理與 usage message | ✅ 完成 |
+| 6.4 | 完整流程 end-to-end 測試 | ✅ 完成 |
 
 ### Phase 7 — 移植至 KD240（ZynqMP 64-bit 首次驗證）
 
@@ -153,20 +155,21 @@ fpga-overlay-driver/
 
 | Step | 說明 | 狀態 |
 |------|------|------|
-| 7.0 | KD240 環境確認（`check_kv260_env.sh`） | 🔲 待執行 |
-| 7.1 | Vivado：建立 AXI GPIO test design（xck24） | 🔲 待建立 |
-| 7.2 | 程式碼調整：64-bit addr、off_t、printf 格式 | 🔲 待調整 |
-| 7.3 | KD240 端對端驗證（load / list / read / write） | 🔲 待驗證 |
+| 7.0 | KD240 環境確認 | ✅ 完成 |
+| 7.1 | Vivado：建立 AXI GPIO test design（xck24） | ✅ 完成 |
+| 7.2 | 程式碼調整：64-bit addr、off_t、printf 格式 | ✅ 完成 |
+| 7.3 | KD240 端對端驗證（load / list / read / write） | ✅ 完成 |
 
 ### Phase 8 — DMA 支援
 
 | Step | 說明 | 狀態 |
 |------|------|------|
-| 8.0 | 確認 userspace DMA 機制（udmabuf / dma-proxy）可用 | 🔲 待確認 |
-| 8.1 | Vivado：建立 AXI DMA loopback design（xck24） | 🔲 待建立 |
-| 8.2 | 實作 DMA 模組（分配 CMA buffer、設定 descriptor、觸發傳輸） | 🔲 待實作 |
-| 8.3 | CLI 加入 `dma_write` / `dma_read` 指令 | 🔲 待實作 |
-| 8.4 | KD240 端對端 DMA 驗證（MM2S → FIFO loopback → S2MM） | 🔲 待驗證 |
+| 8.0 | 設計確認（API 設計、參數暫定、環境確認） | ✅ 完成 |
+| 8.1 | build & install u-dma-buf（ikwzm/u-dma-buf） | 🔲 待完成 |
+| 8.2 | Vivado：建立 AXI DMA loopback design（xck24，SG mode） | 🔲 待建立 |
+| 8.3 | 實作 dma.c（SG + udmabuf + UIO interrupt） | 🔲 待實作 |
+| 8.4 | 端對端驗證（軟體測試資料 loopback 比對） | 🔲 待驗證 |
+| 8.5 | CLI 加入 `dma_write` / `dma_read` 指令 | 🔲 待實作 |
 
 ### Phase 9 — 移植至 KV260（最終目標板）
 
@@ -185,8 +188,11 @@ fpga-overlay-driver/
 ✅ Phase 2 — bit2bin          實作完成，板子驗證通過
 ✅ Phase 3 — fpga_load        實作完成，板子驗證通過
 ✅ Phase 4 — hwh_parser       實作完成，板子驗證通過
-✅ Phase 5 — mmio             實作完成，板子驗證通過（open/mmap/read/write）
-🔲 Phase 6 — CLI 整合         下一步
+✅ Phase 5 — mmio             實作完成，板子驗證通過
+✅ Phase 6 — CLI 整合         實作完成，CORDIC end-to-end 驗證通過
+✅ Phase 7 — KD240 移植       完成，AXI GPIO 64-bit end-to-end 驗證通過
+🔲 Phase 8 — DMA 支援         下一步（KD240 開發驗證）
+🔲 Phase 9 — KV260 移植       待 Phase 8 完成後進行
 ```
 
 ---

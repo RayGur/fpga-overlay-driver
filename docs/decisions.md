@@ -153,3 +153,99 @@ Byte-by-byte 掃描 sync word `0xFFFFFFAA`：實作簡單，但有誤判 payload
 
 **影響範圍**
 - `src/hwh_parser.c`：`start_handler()` 只處理 `MEMRANGE` 元素
+
+---
+
+## DEC-08：DMA userspace 機制選用 u-dma-buf
+
+**決策內容**
+Phase 8 DMA buffer 分配採用 `u-dma-buf`（ikwzm/u-dma-buf），不用 dma-proxy 或 `/dev/mem` 直接存取。
+
+**原因**
+- KD240 確認 CMA 512MB 可用、kernel headers 完整，u-dma-buf 可在板子上 build
+- `/dev/udmabuf`（Linux 標準）是 display buffer driver，用途不同，不可混用
+- dma-proxy 需確認 kernel config，相依性較高
+- u-dma-buf 透過 sysfs 直接提供實體位址，mmap 給 userspace 用，最乾淨
+
+**替代方案**
+- dma-proxy（Xilinx 官方）：功能相近，但需要額外確認 kernel 支援
+- `/dev/mem` 直接 mmap CMA 區段：不需 module，但需手動指定實體位址，脆弱
+
+**影響範圍**
+- `src/dma.c`：buffer 分配與實體位址取得邏輯
+- 板子部署：需先 build & insmod u-dma-buf.ko
+
+---
+
+## DEC-09：AXI DMA 採用 Scatter-Gather 模式
+
+**決策內容**
+Phase 8 DMA 實作採用 SG（Scatter-Gather）模式，不用 Simple 模式。
+
+**原因**
+- 學長建議，其 SPI 設計（16ch × 32-bit × 30kHz ≈ 1.92 MB/s）也採用 SG
+- BCI 應用為連續串流，SG descriptor chain 更適合 pipeline 資料移動
+- Simple 模式每次傳輸需 CPU 介入重設，無法高效處理連續資料流
+
+**替代方案**
+- Simple 模式：實作簡單，但不適合連續串流場景
+
+**影響範圍**
+- `src/dma.c`：需實作 BD（Buffer Descriptor）ring 管理
+- Vivado block design：AXI DMA IP 需啟用 SG 選項
+
+---
+
+## DEC-10：DMA 等待策略：直接實作 interrupt（UIO）
+
+**決策內容**
+直接以 UIO interrupt 實作等待完成，不先做 polling 版本。
+
+**原因**
+- UIO interrupt 實作與 polling 複雜度相近（`read(uio_fd)` block 等通知，`write(uio_fd)` re-enable）
+- KD240 確認 `uio_pdrv_genirq` 已載入，`/dev/uio*` 機制完整可用
+- 從一開始就做好 error handling，比兩階段開發更省時
+
+**替代方案**
+- 先 polling 再改寫：多一個驗證迴圈，但 debug 較容易
+
+**影響範圍**
+- `src/dma.c`：等待邏輯用 `read(uio_fd)` / `write(uio_fd)`，不用輪詢 DMASR
+- Vivado block design：AXI DMA interrupt 需接出並對應到 UIO device
+
+---
+
+## DEC-11：dma.h API 設計（高階，參考 PYNQ + libaxidma）
+
+**決策內容**
+採用高階 API，BD ring 管理完全封裝在 `dma.c` 內部，呼叫者只操作資料和 handle。
+
+```c
+// lifecycle
+dma_t *dma_open(fpga_addr_t base, const char *uio_dev,
+                size_t buf_size, int ring_size);
+void   dma_close(dma_t *h);
+
+// 雙向（loopback / BCI 主要用途）
+int dma_transfer(dma_t *h, const void *tx, void *rx, size_t len);
+
+// 單向（未來彈性）
+int dma_send(dma_t *h, const void *data, size_t len);  // MM2S
+int dma_recv(dma_t *h, void *buf,        size_t len);  // S2MM
+```
+
+**暫定參數**（待實測後可能調整）
+- `buf_size` 預設 4096 bytes（≈ 2ms BCI 資料，page-aligned）
+- `ring_size` 預設 4
+
+**原因**
+- 高階 API 隱藏 BD 細節，與 PYNQ `sendchannel.transfer()` 設計一致
+- MM2S / S2MM 邏輯分開但不暴露給呼叫者，`dma_transfer()` 成對呼叫
+- wait 封裝在函式內部，切換 interrupt 機制時 API 不變
+
+**替代方案**
+- 低階 API（Xilinx xaxidma 風格）：呼叫者管 BD，彈性高但複雜
+
+**影響範圍**
+- `include/dma.h`：公開 API 定義
+- `src/dma.c`：BD ring、udmabuf、UIO interrupt 全部封裝於此
