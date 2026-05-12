@@ -15,8 +15,9 @@ PYNQ 框架在以下情境不適用：
 
 | 板子 | 用途 | 晶片 | ARM |
 |------|------|------|-----|
-| PYNQ-Z2 | 開發驗證 | XC7Z020 | Cortex-A9 (32-bit) |
-| Kria KV260 | 部署目標（Phase 7） | XCK26 | Cortex-A53 (64-bit) |
+| PYNQ-Z2 | 開發驗證（Zynq-7000） | XC7Z020 | Cortex-A9 (32-bit) |
+| Kria KD240 | ZynqMP 首次驗證（Phase 7） | XCK24 | Cortex-A53 (64-bit) |
+| Kria KV260 | 最終部署目標（Phase 9） | XCK26 | Cortex-A53 (64-bit) |
 
 ## 模組架構
 
@@ -84,16 +85,14 @@ $ sudo ./overlay write design_1.hwh cordic_1 0x00 0x00000001
 
 ## 開發指南
 
-本專案在 Windows 上編輯，透過 SCP 同步到板子上以 native gcc 編譯與測試。
+本專案在 Windows 上編輯，透過 SCP 或 git clone 同步到板子上以 native gcc 編譯與測試。
 
 ```bash
-# 1. 同步檔案到板子
-scp -r src/ include/ Makefile xilinx@pynq-z2:~/fpga-overlay-driver/
-
-# 2. SSH 進板子編譯
-ssh xilinx@pynq-z2
+# 板子上 clone（建議）
+git clone https://github.com/RayGur/fpga-overlay-driver.git
 cd fpga-overlay-driver
-make PLATFORM=Z2
+make              # KD240 / KV260（64-bit）
+make PLATFORM=Z2  # PYNQ-Z2（32-bit）
 ```
 
 **開發規則：**
@@ -164,7 +163,9 @@ sudo ./overlay write testing_data/cordic/design_1.hwh cordic_1 0x00 0x1
 | 4 | `hwh_parser.c` — HWH XML 解析 | ✅ 完成，板子驗證通過 |
 | 5 | `mmio.c` — /dev/mem mmap 讀寫 | ✅ 完成，板子驗證通過 |
 | 6 | `main.c` — CLI 整合 | ✅ 完成，板子驗證通過 |
-| 7 | KV260 移植 | 🔲 待開發 |
+| 7 | KD240 移植（ZynqMP 64-bit 首次驗證） | 🔄 進行中（環境確認✅ 編譯✅ 端對端驗證中） |
+| 8 | DMA 支援 | 🔲 待開發 |
+| 9 | KV260 移植（最終目標板） | 🔲 待開發 |
 
 ## 文件索引
 

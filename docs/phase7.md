@@ -1,6 +1,6 @@
 # Phase 7 — 移植至 KD240（ZynqMP 64-bit 首次驗證）
 
-> 狀態：🔲 待開始
+> 狀態：🔄 進行中
 > 目標板：KD240（xck24，Cortex-A53，64-bit，Ubuntu 22.04）
 > 備註：KD240 架構與最終目標板 KV260 相同，作為 ZynqMP 首次驗證用
 
@@ -23,7 +23,7 @@
 
 ## Step 7.0 — KD240 環境確認
 
-🔲 待執行
+✅ 完成
 
 ```bash
 # 本機 scp 到 KD240
@@ -42,7 +42,7 @@ bash check_kv260_env.sh
 
 ## Step 7.1 — Vivado：建立 AXI GPIO test design（xck24）
 
-🔲 待建立
+✅ 完成
 
 需要一個有 AXI-Lite mapped IP 的 KD240 bitstream，用於驗證 load/list/read/write 完整流程。
 
@@ -82,7 +82,7 @@ proc_sys_reset_0
 
 ## Step 7.2 — 程式碼調整（64-bit 移植）
 
-🔲 待調整
+✅ 完成
 
 不加 `ZYNQ7000` 定義重新編譯，觸發 `config.h` 的 64-bit 路徑。
 
