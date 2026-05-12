@@ -46,8 +46,8 @@ C userspace 工具，將 Vivado `.bit` 載入 Zynq FPGA，不依賴 PYNQ。
 - ✅ Phase 4：`hwh_parser.c` 實作完成，板子驗證通過（libexpat SAX，掃描 MEMRANGE）
 - ✅ Phase 5：`mmio.c` 實作完成，板子驗證通過（open/mmap/read/write，write+readback 留待 Phase 6 完整驗證）
 - ✅ Phase 6：CLI 整合完成，板子驗證通過（load/list/read/write，cordic end-to-end）
-- 🔲 **下一步**：Phase 7 — 移植至 KD240（ZynqMP 64-bit 首次驗證）
-- 🔲 Phase 8：DMA 支援（在 KD240 開發驗證）
+- ✅ Phase 7：KD240 移植完成，板子驗證通過（AXI GPIO load/list/read/write，64-bit end-to-end）
+- 🔲 **下一步**：Phase 8 — DMA 支援（在 KD240 開發驗證）
 - 🔲 Phase 9：移植至 KV260（最終目標板）
 
 ## 關鍵文件索引

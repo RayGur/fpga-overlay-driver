@@ -163,7 +163,7 @@ sudo ./overlay write testing_data/cordic/design_1.hwh cordic_1 0x00 0x1
 | 4 | `hwh_parser.c` — HWH XML 解析 | ✅ 完成，板子驗證通過 |
 | 5 | `mmio.c` — /dev/mem mmap 讀寫 | ✅ 完成，板子驗證通過 |
 | 6 | `main.c` — CLI 整合 | ✅ 完成，板子驗證通過 |
-| 7 | KD240 移植（ZynqMP 64-bit 首次驗證） | 🔄 進行中（環境確認✅ 編譯✅ 端對端驗證中） |
+| 7 | KD240 移植（ZynqMP 64-bit 首次驗證） | ✅ 完成，板子驗證通過 |
 | 8 | DMA 支援 | 🔲 待開發 |
 | 9 | KV260 移植（最終目標板） | 🔲 待開發 |
 

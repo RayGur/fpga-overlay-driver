@@ -1,6 +1,6 @@
 # Phase 7 — 移植至 KD240（ZynqMP 64-bit 首次驗證）
 
-> 狀態：🔄 進行中
+> 狀態：✅ 完成
 > 目標板：KD240（xck24，Cortex-A53，64-bit，Ubuntu 22.04）
 > 備註：KD240 架構與最終目標板 KV260 相同，作為 ZynqMP 首次驗證用
 
@@ -104,7 +104,7 @@ make
 
 ## Step 7.3 — KD240 端對端驗證
 
-🔲 待驗證
+✅ 完成
 
 ```bash
 # scp 編譯好的 binary 和測試資料到 KD240
