@@ -1,6 +1,6 @@
 # Phase 8 — DMA 支援
 
-> 狀態：🔲 待開始（Phase 7 KD240 驗證完成後進行）
+> 狀態：🔄 進行中（Step 8.1、8.2 完成；Step 8.3 dma.c 實作中）
 
 ---
 
@@ -71,22 +71,29 @@ int dma_recv(dma_t *h, void *buf,        size_t len);  // S2MM only
 
 ## Step 8.1 — build & install u-dma-buf
 
-🔲 待完成
+✅ 完成（KD240 驗證通過）
 
 ```bash
-git clone https://github.com/ikwzm/u-dma-buf.git
-cd u-dma-buf
-make
-sudo insmod u-dma-buf.ko udmabuf0=4096
+# GitHub 不支援密碼認證；改用 Jupyter 上傳 zip 或 wget tarball
+# 解壓後目錄為 udmabuf-master（注意：必須用 Makefile 的 all target，不能直接 make modules）
+cd udmabuf-master
+make   # 使用 Makefile 自帶 all target，自動傳入 CONFIG_OPTIONS
+sudo insmod u-dma-buf.ko udmabuf0=65536   # 4096 太小，ring_size=4 × buf_size=4096 需要 ~33KB
 ls /dev/udmabuf0
 cat /sys/class/u-dma-buf/udmabuf0/phys_addr
 ```
+
+**驗證結果：**
+- `/dev/udmabuf0` ✅
+- `phys_addr = 0x000000003db12000`（CMA 區段）
+
+> 注意：每次重開機後需重新 insmod。ko 位於 `/root/jupyter_notebooks/udmabuf-master/u-dma-buf.ko`。
 
 ---
 
 ## Step 8.2 — Vivado：建立 AXI DMA Loopback Design（xck24）
 
-🔲 待建立
+✅ 完成
 
 ### 目的
 
@@ -118,15 +125,15 @@ axi_dma s2mm_introut ─┴→ PS PL→PS interrupt
 ### 產出
 
 ```
-kd240_dma_loopback.bit
-kd240_dma_loopback.hwh
+testing_data/axi_dma_loopback/axi_dma_loopback.bit
+testing_data/axi_dma_loopback/axi_dma_loopback.hwh
 ```
 
 ---
 
 ## Step 8.3 — 實作 dma.c（SG + UIO interrupt）
 
-🔲 待實作
+🔄 進行中
 
 新增 `src/dma.c` / `include/dma.h`，實作：
 
